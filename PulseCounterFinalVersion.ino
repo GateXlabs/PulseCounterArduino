@@ -1,0 +1,80 @@
+/*
+ Name:    PulseCounterV2.ino
+ Created: 6/6/2017 2:52:03 PM
+ Author:  Moataz
+*/
+#include <LiquidCrystal.h>
+#define MainPeriod 100
+const int buttonPin = 8;
+int buttonState = 0;
+LiquidCrystal lcd(12, 11, 7, 6, 5, 4);
+long previousMillis = 0; // will store last time of the cycle end
+volatile unsigned long duration = 0; // accumulates pulse width
+volatile unsigned int pulsecount = 0;
+volatile unsigned int pulsecount2 = 0;
+volatile unsigned long previousMicros = 0;
+
+
+
+// the setup function runs once when you press reset or power the board
+void setup() {
+  Serial.begin(19200);
+  attachInterrupt(0, myinthandler, RISING);
+  pinMode(buttonPin, INPUT);
+  digitalWrite(buttonPin, LOW);
+  lcd.begin(16, 2);
+
+
+}
+
+// the loop function runs over and over again until power down or reset
+void loop() {
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= MainPeriod)
+  {
+    previousMillis = currentMillis;
+    // need to bufferize to avoid glitches
+    unsigned long _duration = duration;
+    unsigned long _pulsecount = pulsecount;
+    duration = 0; // clear counters
+    pulsecount = 0;
+    float Freq = 1e6 / float(_duration);
+    Freq *= _pulsecount; // calculate F
+               // output time and frequency data to RS232
+    Serial.print(currentMillis);
+    Serial.print(" "); // separator!
+    Serial.print(Freq);
+    Serial.print(" ");
+    Serial.print(pulsecount2/10);
+    Serial.print(" ");
+    Serial.println(_duration);
+    lcd.setCursor(0, 0);
+    lcd.print("Pulse Cnt:");
+    lcd.print(pulsecount2/10);
+    lcd.setCursor(0, 1);
+    lcd.print("Freq:");
+    lcd.print(Freq);
+    lcd.print(" Hz");
+    
+  }
+   buttonState  = digitalRead(buttonPin);
+  if ( buttonState == HIGH ) //This button will reset the display of the pulse counter on both the LCD and the Serial Monitor 
+  {
+    pulsecount=0;
+    pulsecount2=0;
+    lcd.clear();
+  }
+
+
+}
+
+
+void myinthandler() // interrupt handler .. This interupt will be called everytime the pulse is rising and the counter will be incremented
+{
+  unsigned long currentMicros = micros();
+  duration += currentMicros - previousMicros; //the duration is measured in order to calculate the frequency
+  previousMicros = currentMicros;
+  pulsecount++;
+  pulsecount2++;
+}
+
